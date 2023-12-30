@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = "0.7"
+cortex-m = { version = "0.7", features = ["inline-asm", "linker-plugin-lto"] }
 cortex-m-rt = "0.7"
-embedded-hal = { version = "0.2.5", features = ["unproven"] }
+embedded-hal = { version = "0.2.7", features = ["unproven"] }
 
 defmt = "0.3.5"
 defmt-rtt = "0.4"
@@ -22,9 +22,7 @@ vcc-gnd-yd-rp2040 = { version = "0.4.0", features = [
 ] }
 panic-halt = "0.2.0"
 usb-device = "0.2.9"
-usbd-hid = "0.5.2"
-usbd-serial = "0.1.1"
-heapless = "*"
+heapless = "0.8.0"
 # rp2040-hal = { version = "0.9.0", features = [
 #     "rt",
 #     "rom-v2-intrinsics",
@@ -33,9 +31,8 @@ heapless = "*"
 # ] }
 critical-section = "1.1.2"
 ws2812-pio = "0.7.0"
-usbd-human-interface-device = "*"
-fugit = "*"
-
+usbd-human-interface-device = "0.4.5"
+fugit = "0.3.7"
 
 # cargo build/run
 [profile.dev]

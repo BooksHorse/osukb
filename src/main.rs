@@ -103,7 +103,7 @@ fn main() -> ! {
         .build(&usb_bus);
 
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x0001))
-        .manufacturer("usbd-human-interface-device")
+        .manufacturer("usbd-human-interface-devicee")
         .product("Boot Keyboard")
         .serial_number("TEST")
         .build();
@@ -127,7 +127,7 @@ fn main() -> ! {
 
     let mut led_pin = pins.led.into_push_pull_output();
     let mut button_pin = pins.user_key.into_pull_up_input();
-    let mut bindingA = pins.gpio27.into();
+    let mut bindingA = pins.gpio3.into();
     let mut bindingB = pins.gpio28.into();
     let mut a = Touchio::new(&mut bindingA, &mut delay);
     let mut b = Touchio::new(&mut bindingB, &mut delay);
@@ -270,9 +270,10 @@ impl Touchio<'_> {
             pin: pin,
             threshold: 0.0,
         };
-        let raw_reading = a.get_raw_reading(delay);
+        let mut raw_reading = a.get_raw_reading(delay);
         if raw_reading == TIMEOUT_TICKS {
-            panic!("No pulldown on pin; 1Mohm recommended");
+            //panic!("No pulldown on pin; 1Mohm recommended");
+            raw_reading = 1000;
         }
         let threshold = (raw_reading as f32) * 1.05 + 100.0;
         let b = Touchio {

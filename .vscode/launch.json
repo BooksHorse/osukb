@@ -4,13 +4,17 @@
             "type": "gdb",
             "request": "attach",
             "name": "Attach to gdbserver",
-            "executable": "<path to the elf/exe file relative to workspace root in order to load the symbols>",
-            "target": "X.X.X.X:9999",
+            "executable": "./target/thumbv6m-none-eabi/release/vccgnd2040touchosu",
+            "target": "COM13",
             "remote": true,
             "cwd": "${workspaceRoot}",
-            "gdbpath": "path/to/your/gdb",
+            "gdbpath": "C:\\Users\\sencha\\gdb-multiarch\\bin\\gdb-multiarch.exe",
+            "debugger_args": [
+                "hi"
+            ],
             "autorun": [
-                "any gdb commands to initiate your environment, if it is needed"
+                "monitor swdp_scan",
+                "attach 1"
             ],
         }
     ]

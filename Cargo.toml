@@ -10,18 +10,31 @@ cortex-m = "0.7"
 cortex-m-rt = "0.7"
 embedded-hal = { version = "0.2.5", features = ["unproven"] }
 
-defmt = "0.3"
+defmt = "0.3.5"
 defmt-rtt = "0.4"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
-vcc-gnd-yd-rp2040 = "0.4.0"
+vcc-gnd-yd-rp2040 = { version = "0.4.0", features = [
+    "rt",
+    "rom-v2-intrinsics",
+    "critical-section-impl",
+    "rom-func-cache",
+    "boot2",
+] }
 panic-halt = "0.2.0"
 usb-device = "0.2.9"
 usbd-hid = "0.5.2"
 usbd-serial = "0.1.1"
 heapless = "*"
-rp2040-hal = { version = "0.9.0", features = ["rt"] }
+# rp2040-hal = { version = "0.9.0", features = [
+#     "rt",
+#     "rom-v2-intrinsics",
+#     "critical-section-impl",
+#     "rom-func-cache",
+# ] }
 critical-section = "1.1.2"
 ws2812-pio = "0.7.0"
+usbd-human-interface-device = "*"
+fugit = "*"
 
 
 # cargo build/run
@@ -56,11 +69,21 @@ opt-level = 0
 overflow-checks = false
 
 
+[profile.release.package.rp2040-hal]
+opt-level = 0
+[profile.dev.package.rp2040-hal]
+opt-level = 0
+[profile.dev.package.vcc-gnd-yd-rp2040]
+opt-level = 0
+[profile.release.package.vcc-gnd-yd-rp2040]
+opt-level = 0
+
+
 [profile.release.build-override]
 codegen-units = 8
 debug = false
 debug-assertions = false
-opt-level = 0
+opt-level = 3
 overflow-checks = false
 
 

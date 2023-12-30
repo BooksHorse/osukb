@@ -6,20 +6,25 @@
 
 const N_SAMPLES: i32 = 10;
 const TIMEOUT_TICKS: u16 = 10000;
+use defmt::unwrap;
+use embedded_hal::timer::CountDown;
+use fugit::ExtU32;
+use usbd_human_interface_device::descriptor::InterfaceProtocol;
+use usbd_human_interface_device::device::keyboard::{
+    BootKeyboardConfig, KeyboardLedsReport, NKROBootKeyboardConfig, BOOT_KEYBOARD_REPORT_DESCRIPTOR,
+};
+use usbd_human_interface_device::interface::{InterfaceBuilder, ManagedIdleInterfaceConfig};
+use usbd_human_interface_device::page::Keyboard;
+use usbd_human_interface_device::prelude::*;
 
 use core::borrow::BorrowMut;
-use hal::pio::PIOExt;
-use hal::Timer;
-use ws2812_pio::Ws2812;
-
-use core::fmt::Write;
 use cortex_m::delay::Delay;
-use cortex_m::interrupt::CriticalSection;
 use embedded_hal::digital::v2::{InputPin, IoPin, OutputPin};
-use halpi::pac::interrupt;
+use hal::Timer;
 use heapless::String;
+use pac::interrupt;
 use panic_halt as _;
-use rp2040_hal as halpi;
+// use rp2040_hal as halpi;
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_serial::SerialPort;
 use vcc_gnd_yd_rp2040::hal::gpio::{DynPin, PinId, PinMode, SomePin};
@@ -75,7 +80,6 @@ fn main() -> ! {
         sio.gpio_bank0,
         &mut pac.RESETS,
     );
-    &delay.delay_ms(1000);
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
         pac.USBCTRL_REGS,
         pac.USBCTRL_DPRAM,
@@ -83,11 +87,26 @@ fn main() -> ! {
         true,
         &mut pac.RESETS,
     ));
-    unsafe {
-        // Note (safety): This is safe as interrupts haven't been started yet
-        USB_BUS = Some(usb_bus);
-    }
-    let bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
+
+    let mut keyboard = UsbHidClassBuilder::new()
+        .add_device(BootKeyboardConfig::new(ManagedIdleInterfaceConfig::new(
+            InterfaceBuilder::new(BOOT_KEYBOARD_REPORT_DESCRIPTOR)
+                .unwrap()
+                .description("bocchi")
+                .boot_device(InterfaceProtocol::Keyboard)
+                .idle_default(10.millis())
+                .unwrap()
+                .in_endpoint(10.millis())
+                .unwrap()
+                .build(),
+        )))
+        .build(&usb_bus);
+
+    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x0001))
+        .manufacturer("usbd-human-interface-device")
+        .product("Boot Keyboard")
+        .serial_number("TEST")
+        .build();
 
     // Set up the USB Communications Class Device driver
     //let mut serial = SerialPort::new(bus_ref);
@@ -99,30 +118,15 @@ fn main() -> ! {
     //     .serial_number("TEST")
     //     .device_class(2) // from: https://www.usb.org/defined-class-codes
     //     .build();
-    let usb_hid = HIDClass::new(bus_ref, KeyboardReport::desc(), 60);
-    unsafe {
-        // Note (safety): This is safe as interrupts haven't been started yet.
-        USB_HID = Some(usb_hid);
-    }
 
-    let mut usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x16c0, 0x27dd))
-        .manufacturer("Fake company")
-        .product("Twitchy Mousey")
-        .serial_number("TEST")
-        .device_class(0) // from: https://www.usb.org/defined-class-codes
-        .build();
-    unsafe {
-        // Note (safety): This is safe as interrupts haven't been started yet
-        USB_DEVICE = Some(usb_dev);
-    }
-
-    unsafe {
-        // Enable the USB interrupt
-        core.NVIC.set_priority(interrupt::USBCTRL_IRQ, 5);
-        pac::NVIC::unmask(hal::pac::Interrupt::USBCTRL_IRQ);
-    };
+    // unsafe {
+    //     // Enable the USB interrupt
+    //     //core.NVIC.set_priority(interrupt::USBCTRL_IRQ, 1);
+    //     pac::NVIC::unmask(hal::pac::Interrupt::USBCTRL_IRQ);
+    // };
 
     let mut led_pin = pins.led.into_push_pull_output();
+    let mut button_pin = pins.user_key.into_pull_up_input();
     let mut bindingA = pins.gpio27.into();
     let mut bindingB = pins.gpio28.into();
     let mut a = Touchio::new(&mut bindingA, &mut delay);
@@ -145,28 +149,91 @@ fn main() -> ! {
     // loop {
     //     push_kb_movement(report).ok().unwrap_or(0);
     // }
-    loop {
-        //  critical_section::with(|_| {
-        let value0 = critical_section::with(|_| a.value(&mut delay));
+    let mut input_count_down = timer.count_down();
+    input_count_down.start(10.millis());
 
-        if value0 {
-            led_pin.set_high().unwrap();
-            //let _ = serial.write(b"A\n");
-            push_kb_movement(reportA).ok().unwrap_or(0);
-        } else {
-            led_pin.set_low().unwrap();
+    let mut tick_count_down = timer.count_down();
+    tick_count_down.start(1.millis());
+
+    let mut tick_osuclick = timer.count_down();
+    tick_osuclick.start(10.millis());
+    let mut keys: [Keyboard; 2] = [Keyboard::NoEventIndicated; 2];
+    loop {
+        if tick_osuclick.wait().is_ok() {
+            //  critical_section::with(|_| {
+            // push_kb_movement(reportA).ok().unwrap_or(0);
+            let value0 = a.value(&mut delay);
+
+            if value0 {
+                //button_pin.is_low().unwrap()
+                led_pin.set_high().unwrap();
+                //let _ = serial.write(b"A\n");
+                keys[0] = Keyboard::A;
+                //push_kb_movement(reportA).ok().unwrap_or(0);
+            } else {
+                led_pin.set_low().unwrap();
+                keys[0] = Keyboard::NoEventIndicated;
+            }
+            let value1 = b.value(&mut delay);
+            if value1 {
+                led_pin.set_high().unwrap();
+                //let _ = serial.write(b"A\n");
+                keys[1] = Keyboard::D;
+                //push_kb_movement(reportA).ok().unwrap_or(0);
+            } else {
+                led_pin.set_low().unwrap();
+                keys[1] = Keyboard::NoEventIndicated;
+            }
+            //     //let _ = serial.write(b"D\n");
+            //     //push_kb_movement(reportD).ok().unwrap_or(0);
+            // } else {
+            //     led_pin.set_low().unwrap();
+            // }
+            // usb_dev.poll(&mut [&mut serial]);
+            //     }
+            //)
         }
-        let value1 = critical_section::with(|_| b.value(&mut delay));
-        if value1 {
-            led_pin.set_high().unwrap();
-            //let _ = serial.write(b"D\n");
-            push_kb_movement(reportD).ok().unwrap_or(0);
-        } else {
-            led_pin.set_low().unwrap();
+
+        if input_count_down.wait().is_ok() {
+            //let keys = Keyboard::NoEventIndicated;
+
+            match keyboard.device().write_report(keys) {
+                Err(UsbHidError::WouldBlock) => {}
+                Err(UsbHidError::Duplicate) => {}
+                Ok(_) => {}
+                Err(e) => {
+                    core::panic!("Failed to write keyboard report: {:?}", e)
+                }
+            };
         }
-        // usb_dev.poll(&mut [&mut serial]);
-        //     }
-        //)
+        if tick_count_down.wait().is_ok() {
+            match keyboard.tick() {
+                Err(UsbHidError::WouldBlock) => {}
+                Ok(_) => {}
+                Err(e) => {
+                    core::panic!("Failed to process keyboard tick: {:?}", e)
+                }
+            };
+        }
+
+        if usb_dev.poll(&mut [&mut keyboard]) {
+            match keyboard.device().read_report() {
+                Err(UsbError::WouldBlock) => {
+                    //do nothing
+                }
+                Err(e) => {
+                    core::panic!("Failed to read keyboard report: {:?}", e)
+                }
+                Ok(leds) => {}
+            }
+        }
+        // if button_pin.is_high().unwrap() {
+        //     led_pin.set_high().unwrap();
+        //     //let _ = serial.write(b"A\n");
+        //     //push_kb_movement(reportA).ok().unwrap_or(0);
+        // } else {
+        //     led_pin.set_low().unwrap();
+        // }
     }
 }
 
@@ -224,11 +291,11 @@ struct Touchio<'a> {
     pin: &'a mut DynPin,
     threshold: f32,
 }
-#[allow(non_snake_case)]
-#[interrupt]
-unsafe fn USBCTRL_IRQ() {
-    // Handle USB request
-    let usb_dev = USB_DEVICE.as_mut().unwrap();
-    let usb_hid = USB_HID.as_mut().unwrap();
-    usb_dev.poll(&mut [usb_hid]);
-}
+// #[allow(non_snake_case)]
+// #[interrupt]
+// unsafe fn USBCTRL_IRQ() {
+//     // Handle USB request
+//     let usb_dev = USB_DEVICE.as_mut().unwrap();
+//     let usb_hid = USB_HID.as_mut().unwrap();
+//     usb_dev.poll(&mut [usb_hid]);
+// }

@@ -1,11 +1,16 @@
 #![no_std]
 #![no_main]
-
 const N_SAMPLES: i32 = 10;
 const TIMEOUT_TICKS: u16 = 10000;
-
+// extern crate alloc;
+// use alloc::rc::Rc;
+use core::borrow::BorrowMut;
+use cortex_m::delay::Delay;
+use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_hal::timer::CountDown;
-use fugit::ExtU32;
+use fugit::{ExtU32, RateExtU32};
+use hal::Timer;
+use ssd1306::{prelude::*, Ssd1306};
 use usbd_human_interface_device::descriptor::InterfaceProtocol;
 use usbd_human_interface_device::device::keyboard::{
     BootKeyboardConfig, BOOT_KEYBOARD_REPORT_DESCRIPTOR,
@@ -13,18 +18,22 @@ use usbd_human_interface_device::device::keyboard::{
 use usbd_human_interface_device::interface::{InterfaceBuilder, ManagedIdleInterfaceConfig};
 use usbd_human_interface_device::page::Keyboard;
 use usbd_human_interface_device::prelude::*;
+use vcc_gnd_yd_rp2040::hal::i2c;
 use vcc_gnd_yd_rp2040::hal::multicore::{Multicore, Stack};
 
-use core::borrow::BorrowMut;
-use cortex_m::delay::Delay;
-use embedded_hal::digital::v2::{InputPin, OutputPin};
-use hal::Timer;
+use embedded_graphics::{
+    mono_font::{ascii::FONT_9X18_BOLD, MonoTextStyleBuilder},
+    pixelcolor::BinaryColor,
+    prelude::*,
+    text::{Baseline, Text},
+};
 
 use panic_halt as _;
 // use rp2040_hal as halpi;
 use usb_device::{class_prelude::*, prelude::*};
 
 use vcc_gnd_yd_rp2040::hal::gpio::DynPin;
+use vcc_gnd_yd_rp2040::pac::i2c0;
 use vcc_gnd_yd_rp2040::{entry, hal};
 use vcc_gnd_yd_rp2040::{
     hal::{
@@ -35,10 +44,11 @@ use vcc_gnd_yd_rp2040::{
     },
     Pins, XOSC_CRYSTAL_FREQ,
 };
-//static mut CORE1_STACK: Stack<4096> = Stack::new();
+static mut CORE1_STACK: Stack<4096> = Stack::new();
+// static mut TIMER: Rc<Option<Timer>> = Rc::new(None);
 #[entry]
 fn main() -> ! {
-    let mut pac = pac::Peripherals::take().unwrap();
+    let mut pac: pac::Peripherals = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
 
     let mut watchdog = Watchdog::new(pac.WATCHDOG);
@@ -56,7 +66,10 @@ fn main() -> ! {
     .unwrap();
 
     let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
-    let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
+    let mut timer: Timer = Timer::new(pac.TIMER, &mut pac.RESETS);
+    // unsafe {
+    //     *Rc::get_mut(&mut TIMER).unwrap()= timer;
+    // }
     let mut sio = Sio::new(pac.SIO);
     let pins = Pins::new(
         pac.IO_BANK0,
@@ -121,6 +134,31 @@ fn main() -> ! {
     // }
     // let mut input_count_down = timer.count_down();
     // input_count_down.start(1.millis());
+    //i2c::I2C::
+    let sda_pin = pins.gpio18.into_mode();
+    let scl_pin = pins.gpio19.into_mode();
+
+    let i2c = hal::I2C::i2c1(
+        pac.I2C1,
+        sda_pin,
+        scl_pin,
+        RateExtU32::kHz(4000),
+        &mut pac.RESETS,
+        &clocks.peripheral_clock,
+    );
+    // Create the I²C display interface:
+    let interface = ssd1306::I2CDisplayInterface::new(i2c);
+
+    // Create a driver instance and initialize:
+    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+        .into_buffered_graphics_mode();
+    display.init().unwrap();
+
+    // Create a text style for drawing the font:
+    let text_style = MonoTextStyleBuilder::new()
+        .font(&FONT_9X18_BOLD)
+        .text_color(BinaryColor::On)
+        .build();
 
     let mut tick_count_down = timer.count_down();
     tick_count_down.start(1.millis());
@@ -132,13 +170,24 @@ fn main() -> ! {
     // let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
     // let cores = mc.cores();
     // let core1 = &mut cores[1];
-    // let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, core1_task);
+    // let mut display_count_down = timer.count_down();
+    // let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || -> ! {
+    //     //display_count_down.start(1000.millis());
+    //     loop {
+    //         //   if display_count_down.wait().is_ok() {
+    //         display.clear(BinaryColor::Off);
+    //         Text::with_baseline("Hello world!", Point::zero(), text_style, Baseline::Top)
+    //             .draw(&mut display)
+    //             .unwrap();
+    //         display.flush().unwrap();
+    //         //       }
+    //     }
+    // });
     loop {
         // if tick_osuclick.wait().is_ok() {
         //  critical_section::with(|_| {
         // push_kb_movement(reportA).ok().unwrap_or(0);
         let value0 = a.value(&mut delay);
-
         if value0 {
             //button_pin.is_low().unwrap()
             led_pin.set_high().unwrap();

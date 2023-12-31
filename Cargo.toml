@@ -33,6 +33,8 @@ critical-section = "1.1.2"
 ws2812-pio = "0.7.0"
 usbd-human-interface-device = "0.4.5"
 fugit = "0.3.7"
+ssd1306 = "0.8.4"
+embedded-graphics = "0.8.1"
 
 # cargo build/run
 [profile.dev]

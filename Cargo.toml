@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = { version = "0.7", features = ["inline-asm", "linker-plugin-lto"] }
+cortex-m = { version = "0.7", features = ["inline-asm"] }
 cortex-m-rt = "0.7"
 embedded-hal = { version = "0.2.7", features = ["unproven"] }
 

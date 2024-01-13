@@ -14,7 +14,7 @@ rustflags = [
   "link-arg=-Tlink.x",
   "-C",
   "link-arg=-Tdefmt.x",
-  "-Clinker-plugin-lto",
+  #  "-Clinker-plugin-lto",
 
   # Code-size optimizations.
   #   trap unreachable can save a lot of space, but requires nightly compiler.

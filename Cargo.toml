@@ -1,7 +1,8 @@
+cargo-features = ["edition2024"]
 [package]
 name = "vccgnd2040touchosu"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,7 +13,8 @@ embedded-hal = { version = "0.2.7", features = ["unproven"] }
 
 defmt = "0.3.5"
 defmt-rtt = "0.4"
-panic-probe = { version = "0.3", features = ["print-defmt"] }
+panic-probe = { version = "0.3", features = ["print-rtt"] }
+rtt-target = "0.5.0"
 vcc-gnd-yd-rp2040 = { version = "0.4.0", features = [
     "rt",
     "rom-v2-intrinsics",
@@ -20,7 +22,6 @@ vcc-gnd-yd-rp2040 = { version = "0.4.0", features = [
     "rom-func-cache",
     "boot2",
 ] }
-panic-halt = "0.2.0"
 usb-device = "0.2.9"
 heapless = "0.8.0"
 # rp2040-hal = { version = "0.9.0", features = [

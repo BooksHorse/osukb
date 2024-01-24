@@ -19,8 +19,8 @@ use core::borrow::BorrowMut;
 use cortex_m::delay::Delay;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use hal::Timer;
-
-use panic_halt as _;
+use panic_probe as _;
+use rtt_target::{debug_rprintln, debug_rtt_init_print};
 // use rp2040_hal as halpi;
 use usb_device::{class_prelude::*, prelude::*};
 
@@ -38,6 +38,7 @@ use vcc_gnd_yd_rp2040::{
 //static mut CORE1_STACK: Stack<4096> = Stack::new();
 #[entry]
 fn main() -> ! {
+    debug_rtt_init_print!();
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
 
@@ -125,6 +126,9 @@ fn main() -> ! {
     let mut tick_count_down = timer.count_down();
     tick_count_down.start(1.millis());
 
+    let mut debug_count_down = timer.count_down();
+    debug_count_down.start(2000.millis());
+
     // let mut tick_osuclick = timer.count_down();
     // tick_osuclick.start(1.millis());
     let mut keys: [Keyboard; 2] = [Keyboard::NoEventIndicated; 2];
@@ -133,6 +137,8 @@ fn main() -> ! {
     // let cores = mc.cores();
     // let core1 = &mut cores[1];
     // let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, core1_task);
+    let mut count: f32 = 0.0;
+    let mut starttime = timer.get_counter();
     loop {
         // if tick_osuclick.wait().is_ok() {
         //  critical_section::with(|_| {
@@ -159,6 +165,7 @@ fn main() -> ! {
             led_pin.set_low().unwrap();
             keys[1] = Keyboard::NoEventIndicated;
         }
+        count += 1.0;
         //     //let _ = serial.write(b"D\n");
         //     //push_kb_movement(reportD).ok().unwrap_or(0);
         // } else {
@@ -181,6 +188,13 @@ fn main() -> ! {
             }
         };
         // }
+        if debug_count_down.wait().is_ok() {
+            let endtime = timer.get_counter();
+            let f = endtime - starttime;
+
+            debug_rprintln!("Rate/s : {}", count * 1000000.0 / (f.to_micros() as f32));
+        }
+
         if tick_count_down.wait().is_ok() {
             match keyboard.tick() {
                 Err(UsbHidError::WouldBlock) => {}

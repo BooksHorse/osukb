@@ -134,7 +134,7 @@ fn main() -> ! {
 
     let mut led_pin = pins.led.into_push_pull_output();
     let mut _button_pin = pins.user_key.into_pull_up_input();
-    let mut binding_a = pins.gpio11.into()
+    let mut binding_a = pins.gpio11.into();
     let mut binding_b = pins.gpio6.into();
     let mut a = Touchio::new(&mut binding_a, &mut delay);
     let mut b = Touchio::new(&mut binding_b, &mut delay);
@@ -226,49 +226,49 @@ fn main() -> ! {
         })
         .unwrap();
 
-        let tm = TIMER.borrow(cs).take();
-        let td = tm.unwrap();
-        let mut tick_count_down = td.count_down();
-        tick_count_down.start(1.millis());
+    let tm = TIMER.borrow(cs).take();
+    let td = tm.unwrap();
+    let mut tick_count_down = td.count_down();
+    tick_count_down.start(1.millis());
 
-        loop {
-            // if tick_osuclick.wait().is_ok() {
-            //  critical_section::with(|_| {
-            // push_kb_movement(reportA).ok().unwrap_or(0);
-            let value0 = a.value(&mut delay);
+    loop {
+        // if tick_osuclick.wait().is_ok() {
+        //  critical_section::with(|_| {
+        // push_kb_movement(reportA).ok().unwrap_or(0);
+        let value0 = a.value(&mut delay);
 
-            if value0 {
-                //button_pin.is_low().unwrap()
-                led_pin.set_high().unwrap();
-                //let _ = serial.write(b"A\n");
-                keys[0] = Keyboard::A;
-                //push_kb_movement(reportA).ok().unwrap_or(0);
-            } else {
-                led_pin.set_low().unwrap();
-                keys[0] = Keyboard::NoEventIndicated;
-            }
-            let value1 = b.value(&mut delay);
-            if value1 {
-                led_pin.set_high().unwrap();
-                //let _ = serial.write(b"A\n");
-                keys[1] = Keyboard::D;
-                //push_kb_movement(reportA).ok().unwrap_or(0);
-            } else {
-                led_pin.set_low().unwrap();
-                keys[1] = Keyboard::NoEventIndicated;
-            }
-            //     //let _ = serial.write(b"D\n");
-            //     //push_kb_movement(reportD).ok().unwrap_or(0);
-            // } else {
-            //     led_pin.set_low().unwrap();
-            // }
-            // usb_dev.poll(&mut [&mut serial]);
-            //     }
-            //)
-            //}
+        if value0 {
+            //button_pin.is_low().unwrap()
+            led_pin.set_high().unwrap();
+            //let _ = serial.write(b"A\n");
+            keys[0] = Keyboard::A;
+            //push_kb_movement(reportA).ok().unwrap_or(0);
+        } else {
+            led_pin.set_low().unwrap();
+            keys[0] = Keyboard::NoEventIndicated;
+        }
+        let value1 = b.value(&mut delay);
+        if value1 {
+            led_pin.set_high().unwrap();
+            //let _ = serial.write(b"A\n");
+            keys[1] = Keyboard::D;
+            //push_kb_movement(reportA).ok().unwrap_or(0);
+        } else {
+            led_pin.set_low().unwrap();
+            keys[1] = Keyboard::NoEventIndicated;
+        }
+        //     //let _ = serial.write(b"D\n");
+        //     //push_kb_movement(reportD).ok().unwrap_or(0);
+        // } else {
+        //     led_pin.set_low().unwrap();
+        // }
+        // usb_dev.poll(&mut [&mut serial]);
+        //     }
+        //)
+        //}
 
-            // if input_count_down.wait().is_ok() {
-            //let keys = Keyboard::NoEventIndicated;
+        // if input_count_down.wait().is_ok() {
+        //let keys = Keyboard::NoEventIndicated;
 
         // }
         if debug_count_down.wait().is_ok() {

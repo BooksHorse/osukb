@@ -112,8 +112,8 @@ fn main() -> ! {
 
     let mut led_pin = pins.led.into_push_pull_output();
     let mut _button_pin = pins.user_key.into_pull_up_input();
-    let mut binding_a = pins.gpio3.into();
-    let mut binding_b = pins.gpio28.into();
+    let mut binding_a = pins.gpio11.into()
+    let mut binding_b = pins.gpio6.into();
     let mut a = Touchio::new(&mut binding_a, &mut delay);
     let mut b = Touchio::new(&mut binding_b, &mut delay);
 

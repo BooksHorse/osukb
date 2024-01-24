@@ -33,8 +33,12 @@ use usbd_human_interface_device::page::Keyboard;
 use usbd_human_interface_device::prelude::*;
 use vcc_gnd_yd_rp2040::hal::multicore::{Multicore, Stack};
 
-// use panic_halt as _;
+use core::borrow::BorrowMut;
+use cortex_m::delay::Delay;
+use embedded_hal::digital::v2::{InputPin, OutputPin};
+use hal::Timer;
 use panic_probe as _;
+use rtt_target::{debug_rprintln, debug_rtt_init_print};
 // use rp2040_hal as halpi;
 use usb_device::{class_prelude::*, prelude::*};
 
@@ -55,8 +59,7 @@ static TIMER: Mutex<RefCell<Option<Timer>>> = Mutex::new(RefCell::new(None));
 use rtt_target::{rprintln, rtt_init_print};
 #[entry]
 fn main() -> ! {
-    rtt_init_print!();
-    rprintln!("Hello, world!");
+    debug_rtt_init_print!();
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
 
@@ -131,8 +134,8 @@ fn main() -> ! {
 
     let mut led_pin = pins.led.into_push_pull_output();
     let mut _button_pin = pins.user_key.into_pull_up_input();
-    let mut binding_a = pins.gpio3.into();
-    let mut binding_b = pins.gpio28.into();
+    let mut binding_a = pins.gpio11.into()
+    let mut binding_b = pins.gpio6.into();
     let mut a = Touchio::new(&mut binding_a, &mut delay);
     let mut b = Touchio::new(&mut binding_b, &mut delay);
 
@@ -141,6 +144,12 @@ fn main() -> ! {
     // }
     // let mut input_count_down = timer.count_down();
     // input_count_down.start(1.millis());
+
+    let mut tick_count_down = timer.count_down();
+    tick_count_down.start(1.millis());
+
+    let mut debug_count_down = timer.count_down();
+    debug_count_down.start(2000.millis());
 
     // let mut tick_osuclick = timer.count_down();
     // tick_osuclick.start(1.millis());
@@ -217,7 +226,6 @@ fn main() -> ! {
         })
         .unwrap();
 
-    interrupt::free(|cs| {
         let tm = TIMER.borrow(cs).take();
         let td = tm.unwrap();
         let mut tick_count_down = td.count_down();
@@ -262,7 +270,16 @@ fn main() -> ! {
             // if input_count_down.wait().is_ok() {
             //let keys = Keyboard::NoEventIndicated;
 
-            match keyboard.device().write_report(keys) {
+        // }
+        if debug_count_down.wait().is_ok() {
+            let endtime = timer.get_counter();
+            let f = endtime - starttime;
+
+            debug_rprintln!("Rate/s : {}", count * 1000000.0 / (f.to_micros() as f32));
+        }
+
+        if tick_count_down.wait().is_ok() {
+            match keyboard.tick() {
                 Err(UsbHidError::WouldBlock) => {}
                 Err(UsbHidError::Duplicate) => {}
                 Ok(_) => {}
@@ -300,9 +317,7 @@ fn main() -> ! {
             //     led_pin.set_low().unwrap();
             // }
         }
-    });
-
-    loop {}
+    }
 }
 
 // fn core1_task() -> ! {

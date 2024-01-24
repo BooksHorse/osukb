@@ -459,7 +459,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa6fa5645ef5a760cd340eaa92af9c1ce131c8c09e7f8926d8a24b59d26652b9"
 dependencies = [
  "cortex-m",
- "rtt-target",
+ "rtt-target 0.4.0",
 ]
 
 [[package]]
@@ -643,6 +643,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtt-target"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10b34c9e6832388e45f3c01f1bb60a016384a0a4ad80cdd7d34913bed25037f0"
+dependencies = [
+ "critical-section",
+ "ufmt-write",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -804,8 +814,7 @@ dependencies = [
  "fugit",
  "heapless",
  "panic-probe",
- "rtt-target",
- "ssd1306",
+ "rtt-target 0.5.0",
  "usb-device",
  "usbd-human-interface-device",
  "vcc-gnd-yd-rp2040",
